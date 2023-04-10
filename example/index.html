@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta name="msapplication-tap-highlight" content="no" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>座位图渲染示例</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.js"></script>
+    <script src="../seats.js"></script>
+    <script src="js/Vue.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            position: relative;
+            width: 100%;
+            overflow-x: hidden;
+            background-color: #f2f2f2;
+        }
+
+        /* 大座位图屏幕 - max-canvas screen css */
+        #screen {
+            position: absolute;
+            width: 100%;
+            height: 40px;
+            margin-top: 15px;
+        }
+        #screen > img {
+            display: block;
+            width: 60%;
+            margin: 0 auto;
+        }
+        #screen > p {
+            display: block;
+            width: 90%;
+            margin: 0 auto;
+            text-align: center;
+            position: absolute;
+            left: 50%;
+            top: 20px;
+            font-size: 12px;
+            transform: translateX(-50%);
+        }
+
+        /* 大座位图 - max-canvas css */
+        #container {
+            position: relative;
+        }
+        #canvas {
+            position: absolute;
+            left: 0;
+            top: 0;
+            margin-top: 80px;
+        }
+
+        /* 大座位图左边数字标识 css */
+        .siled {
+            margin-top: 40px;
+            position: absolute;
+            left: 5px;
+            padding: 0 2px;
+            background-color: #000;
+            color: #fff;
+            font-size: 12px;
+            border-radius: 100px;
+            z-index: 999;
+        }
+
+        .seats-option {
+            width: 60%;
+            margin: 0 auto;
+        }
+        .seats-option > ul {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .seats-option li {
+            list-style: none;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+        }
+        .seats-option li > img {
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
+        }
+        .seats-option li > span {
+            font-size: 12px;
+        }
+
+        #app {
+            padding: 10px 0 0;
+        }
+
+        /* 底部业务 - css */
+        .footer-container {
+            width: 100%;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            background-color: #fff;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            padding-bottom: 20px;
+            z-index: 9999;
+        }
+        .notice {
+            height: 40px;
+            font-size: 14px;
+            line-height: 40px;
+            padding: 0 15px;
+            color: #82848a;
+            position: relative;
+        }
+        .notice::after {
+            content: "";
+            width: 93%;
+            position: absolute;
+            left: 15px;
+            bottom: 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .film-info {
+            padding: 10px 15px 0;
+        }
+        .name {
+            font-size: 15px;
+            font-weight: 600;
+        }
+        .time {
+            padding-top: 4px;
+            font-size: 13px;
+            color: #82848a;
+        }
+        .rec-node {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            padding: 15px;
+        }
+        .rec-node ul {
+            list-style: none;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            margin-left: 20px;
+        }
+        .rec-node ul li {
+            padding: 5px 10px;
+            background-color: #f4f4f4;
+            margin-right: 5px;
+            border-radius: 5px;
+            font-size: 13px;
+        }
+        .btn {
+            width: 80%;
+            margin: 0 auto;
+            background-color: #F00;
+            text-align: center;
+            color: #fff;
+            line-height: 40px;
+            border-radius: 100px;
+        }
+        .selected-node {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            padding: 15px;
+            overflow-x: auto;
+        }
+        .selected-node ul {
+            list-style: none;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+        }
+        .selected-node ul li {
+            margin-right: 10px;
+            background-color: #f4f4f4;
+            padding: 6px 10px;
+            border-radius: 5px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .selected-node ul li span {
+            padding-left: 10px;
+            font-size: 12px;
+            color: #82848a;
+        }
+        .seat-name {
+            font-size: 14px;
+        }
+        .seat-price {
+            font-size: 13px;
+            color: #F00;
+            padding-top: 2px;
+        }
+        .selected-node::-webkit-scrollbar {
+            display:none;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div id="container">
+        <div class="seats-option">
+            <ul>
+                <li>
+                    <img src="img/optional.png" />
+                    <span>可选</span>
+                </li>
+                <li>
+                    <img src="img/sold.png" />
+                    <span>已售</span>
+                </li>
+                <li>
+                    <img src="img/best.png" />
+                    <span>最佳观影位</span>
+                </li>
+            </ul>
+        </div>
+        <div id="screen" ref="maxScreen">
+            <img src="img/screen.png" alt="">
+            <p>1号CINITY巨幕全景声激光厅 银幕</p>
+        </div>
+        <div class="siled" ref="sequence" id="sequence"></div>
+        <canvas ref="maxCanvas" id="canvas"></canvas>
+    </div>
+    <div class="footer-container" ref="footer">
+        <div class="notice">本影城观看3D电影，需要自备3D眼镜或者购买</div>
+        <div class="film-info">
+            <p class="name">阿凡达：水之道</p>
+            <p class="time">今天 12月28日 11:00-14:12 英语3D</p>
+        </div>
+        <div class="rec-node" v-if="showRec">
+            <span>推荐座位</span>
+            <ul>
+                <li @click="recSeat(1)">1人</li>
+                <li @click="recSeat(2)">2人</li>
+                <li @click="recSeat(3)">3人</li>
+            </ul>
+        </div>
+        <div class="selected-node" v-if="showSeats">
+            <ul>
+                <li v-for="(item, index) in selectedSeatsData" :key="index">
+                    <div>
+                        <p class="seat-name">{{ item.y }}排{{ item.x }}列</p>
+                        <p class="seat-price">到手价￥45.9</p>
+                    </div>
+                    <span @click="removeSeat(index)">x</span>
+                </li>
+            </ul>
+        </div>
+        <div class="btn" :style="showSeats ? '' : 'margin-top: 15px'">请先选座</div>
+    </div>
+</div>
+</body>
+<script type="text/javascript">
+    let vue = new Vue({
+        el: '#app',
+        data() {
+            return {
+                showRec: true,
+                showSeats: false,
+                seatsMap: null,
+                el: {
+                    maxCanvas: null,
+                    maxScreen: null,
+                    sequence: null
+                },
+                alert_option: {
+                    alert_text: '非常棒最佳观影区位置~',
+                    img_src: 'img/good_bg.png',
+                    bg_color: '#ff9800',
+                    text_color: '#fff',
+                    fontSize: '12px',
+                    is_show_alert: true
+                },
+                seatsOptions: {
+                    image_option: {
+                        love: {
+                            w: 152,
+                            h: 64
+                        },
+                        normal: {
+                            w: 68,
+                            h: 64
+                        }
+                    },
+                    line: {
+                        best_color: '#F00',
+                        center_color: '#c8c8c8'
+                    },
+                    blank: {
+                        left: 10,
+                        right: 10,
+                        top: 20
+                    },
+                    maxSelectNum: 4,
+                    selectSeatCall: this.selectCall
+                },
+                background: {
+                    un_set: 'img/optional.png',
+                    un_love: 'img/un_love.png',
+                    set:'img/set.png',
+                    sold_love: 'img/sold_love.png',
+                    love: 'img/love.png',
+                    sold: 'img/sold.png',
+                    mend: 'img/wei_sigle.png',
+                    love_mend: 'img/wei_love.png'
+                },
+                footerHeight: 231,
+                selectedSeatsData: []
+            }
+        },
+        mounted() {
+            this.initNode()
+            this.initMap()
+        },
+        methods: {
+            initMap() {
+                this.seatsMap = new Seats(this.el.maxCanvas, {
+                    maxMap: this.seatsOptions,
+                    alert_option: this.alert_option
+                })
+                this.seatsMap.setBackground(this.background)
+                this.getSeatsData()
+            },
+            recSeat(num) {
+                this.seatsMap.recSeatHandler(num)
+            },
+            removeSeat(index) {
+                let data = this.selectedSeatsData[index]
+                this.seatsMap.closeSeatHandler({
+                    x: parseInt(data.x),
+                    y: parseInt(data.y)
+                })
+                this.selectedSeatsData.splice(index, 1)
+                if(!this.selectedSeatsData.length) {
+                    this.showRec = true
+                    this.showSeats = false
+                }
+            },
+            initNode() {
+                this.el.maxCanvas = this.$refs.maxCanvas
+                this.el.maxCanvas.style = window.innerWidth || window.screen.width
+                this.el.maxCanvas.setAttribute('width', window.innerWidth || window.screen.width)
+                let height = (window.innerHeight || window.screen.height) - (this.footerHeight + 90)
+                this.el.maxCanvas.setAttribute('height', height)
+                this.el.maxScreen = this.$refs.maxScreen
+                this.el.sequence = this.$refs.sequence
+                this.seatsOptions['sequence'] = {
+                    el: this.el.sequence,
+                    style: {
+                        position: 'absolute',
+                        top: '0px',
+                        left: '5px',
+                        padding: '0 2px',
+                        backgroundColor: 'rgba(0, 0, 0, .6)',
+                        color: '#fff',
+                        fontSize: '12px',
+                        borderRadius: '100px',
+                        zIndex: '999',
+                        marginTop: '80px'
+                    }
+                }
+                this.seatsOptions['screen'] = {
+                    el: this.el.maxScreen
+                }
+            },
+            getSeatsData() {
+                this.seatsMap.$.ajax({
+                    type: 'get',
+                    url: 'js/seats.json',
+                    success: (data) => {
+                        this.seatsMap.setSeatData(JSON.parse(data)).drawLargeMap()
+                    }
+                })
+            },
+            selectCall(data) {
+                this.showRec = false
+                this.showSeats = true
+                let selected = this.selectedSeatsData
+                data.forEach(item => {
+                    for (let i = 0; i < selected.length; i++) {
+                        if (item.x == selected[i].x && item.y == selected[i].y) {
+                            this.selectedSeatsData.splice(i, 1)
+                            return
+                        }
+                    }
+                    this.selectedSeatsData.push(item)
+                })
+                if(!this.selectedSeatsData.length) {
+                    this.showRec = true
+                    this.showSeats = false
+                }
+            }
+        }
+    })
+</script>
+</html>
